@@ -55,27 +55,22 @@ class SongResolver:
                     if not song_data:
                         continue
 
-                    print(song_data)
-                    print(
-                        {
-                            "title": song_data["track"]["title"],
-                            "subtitle": song_data["track"]["subtitle"],
-                            "location": song_data["location"],
-                        }
-                    )
-
                     original_file = os.path.split(root)[1]
                     timestamp_seconds = int(os.path.splitext(audio_clip)[0])
                     timestamp = timedelta(seconds=timestamp_seconds)
-                    songs.append(
-                        SongData(
+
+                    try:
+                        song_data = SongData(
                             title=song_data["track"]["title"],
                             artist=song_data["track"]["subtitle"],
                             original_file=original_file,
                             time=timestamp,
                             accuracy=song_data["location"]["accuracy"],
                         )
-                    )
+                        songs.append(song_data)
+                    except Exception as e:
+                        print(f"Error processing song data: {e}")
+                        print(f"Song data: {song_data}")
 
             bar.finish()
 

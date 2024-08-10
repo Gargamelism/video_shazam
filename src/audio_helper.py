@@ -1,16 +1,22 @@
 import moviepy.editor as moviepy
 import os
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+from typing import Optional
 
 
-def extract_audio(video_file: str) -> NamedTemporaryFile:
+def extract_audio(video_file: str) -> Optional[NamedTemporaryFile]:
     video_file_name, _ = os.path.splitext(video_file)
     audio_file = NamedTemporaryFile(prefix=video_file_name, suffix=".mp3", delete=False)
     audio_file.close()
 
     print(f"Extracting audio from {video_file} to {audio_file}")
 
-    video = moviepy.VideoFileClip(video_file)
+    try:
+        video = moviepy.VideoFileClip(video_file)
+    except Exception as e:
+        print(f"Error opening video file: {e}")
+        return None
+
     audio = video.audio
 
     audio.write_audiofile(audio_file.name)
