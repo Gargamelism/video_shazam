@@ -28,8 +28,8 @@ def main():
 
     song_resolver = SongResolver(audio_file, args.analysis_time)
     songs = song_resolver.get_songs()
-    open(args.output_file, "w").write(songs)
     pprint(songs)
+    open(args.output_file, "w").write("\n".join([str(song) for song in songs]))
 
     # Print final message
     print("Processing complete!")
