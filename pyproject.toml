@@ -1,0 +1,11 @@
+[project]
+name = "video_shazam"
+version = "0.1.0"
+dependencies = [
+  "progressbar2",
+  "python-dotenv",
+  "moviepy",
+]
+
+[tool.black]
+line-length = 130
