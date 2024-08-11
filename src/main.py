@@ -2,31 +2,10 @@ import argparse
 import json
 import os
 from dotenv import load_dotenv
-from pprint import pprint
-from dataclasses import asdict
-from progressbar import ProgressBar
 
-from audio_helper import extract_audio
-from SongResolver import SongResolver
 from json_helper import encoder
-
-
-def resolve_songs(all_songs, video_file, analysis_time, segments):
-    print("Extracting audio from video...")
-    audio_file = extract_audio(video_file)
-    if audio_file is None:
-        print(f"Video file is not valid! {video_file}")
-        return all_songs
-
-    print("Audio extracted successfully!")
-
-    song_resolver = SongResolver(audio_file, analysis_time, segments)
-    songs = song_resolver.get_songs()
-
-    if len(songs) > 0:
-        all_songs[songs[0].original_file] = [asdict(song) for song in songs]
-
-    return all_songs
+from song_resolve.song_resolve import resolve_songs_from_file, resolve_songs_from_folder
+from SpotifyHelper import SpotifyHelper
 
 
 def parse_args():
@@ -48,18 +27,26 @@ def main():
 
     all_songs = {}
 
-    if os.path.isfile(args.input):
-        all_songs = resolve_songs(all_songs, args.input, args.analysis_time, args.segments)
+    if args.songs_file:
+        with open(args.songs_file, "r") as songs_file:
+            all_songs = json.load(songs_file)
     else:
-        for root, _, files in os.walk(args.input):
-            bar = ProgressBar(max_value=len(files)).start()
-            for file in files:
-                all_songs = resolve_songs(all_songs, os.path.join(root, file), args.analysis_time, args.segments)
-                bar.increment()
-            bar.finish()
+        if os.path.isfile(args.input):
+            all_songs = resolve_songs_from_file(all_songs, args.input, args.analysis_time, args.segments)
+        if os.path.isdir(args.input):
+            all_songs = resolve_songs_from_folder(all_songs, args.input, args.analysis_time, args.segments)
 
-    with open(args.output_file, "w") as output_file:
-        json.dump(all_songs, output_file, default=encoder, indent=4)
+        with open(args.output_file, "w") as output_file:
+            json.dump(all_songs, output_file, default=encoder, indent=4)
+
+    spotify_helper = SpotifyHelper(
+        os.getenv("SPOTIFY_CLIENT_ID"), os.getenv("SPOTIFY_CLIENT_SECRET"), os.getenv("SPOTIFY_REDIRECT_URI")
+    )
+
+    for original_file, songs in all_songs.items():
+        for song in songs:
+            spotify_track = spotify_helper.get_track(song["title"], song["artist"])
+            print(f"Found track {spotify_track}")
 
     # Print final message
     print("Processing complete!")

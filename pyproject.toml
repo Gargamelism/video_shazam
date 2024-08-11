@@ -5,6 +5,7 @@ dependencies = [
   "progressbar2",
   "python-dotenv",
   "moviepy",
+  "spotipy",
 ]
 
 [tool.black]
