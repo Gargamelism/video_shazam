@@ -1,30 +1,15 @@
 import os
-from dataclasses import dataclass
+
 from progressbar import ProgressBar
 from datetime import timedelta
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from audio_helper import split_audio
 from shazam_helper import identify_song
+from song_resolve.song_resolvers.SongData import SongData
 
 
-@dataclass
-class SongData:
-    title: str
-    artist: str
-    original_file: str
-    time: str
-    accuracy: float
-
-    def __eq__(self, other):
-        return self.title == other.title and self.artist == other.artist
-
-    def __hash__(self):
-        return hash((self.title, self.artist))
-
-
-class SongResolver:
-
+class VideoSongResolver:
     def __init__(self, audio_file: NamedTemporaryFile, segment_duration_secs: int, segments_count: int) -> None:
         self._original_audio_file = audio_file
         self._segment_duration_secs = segment_duration_secs
