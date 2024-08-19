@@ -12,6 +12,7 @@ class TuneFindSongResolver:
 
     def get_songs(self) -> list[SongData]:
         with sync_playwright() as s_playwright:
+            self._playwright_context = s_playwright
             page = self._playwright_init(s_playwright)
             seasons = self._get_seasons(page)
 
@@ -56,14 +57,17 @@ class TuneFindSongResolver:
     def _get_season_songs(self, page: Page, season: str):
         print(f"Getting songs for season {season}")
         # select season
-        page.locator(".DropdownSelect___StyledDiv-sc-r6nflk-0.lgzsqo > select").select_option(season)
+        season_selector = ".DropdownSelect___StyledDiv-sc-r6nflk-0.lgzsqo > select"
+        page.locator(season_selector).select_option(season)
 
         # get episodes
-        episode_locator = ".styles__StyledCardBorder-sc-1njjh38-3.sc-cDsqlO.ikwQk.bVwFkC"
-        page.locator(episode_locator).first.wait_for(state="attached")
-        episodes = page.locator(episode_locator).all()
+        episode_selector = ".styles__StyledCardBorder-sc-1njjh38-3.sc-cDsqlO.ikwQk.bVwFkC"
+        page.locator(episode_selector).first.wait_for(state="attached")
+
+        episodes = page.locator(episode_selector).all()
         for episode in episodes:
             episode_title = self._get_episode_title(episode)
+            print(f"Getting songs for episode {episode_title}")
             episode.click()
 
             # get all songs
