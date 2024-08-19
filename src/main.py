@@ -22,6 +22,7 @@ def parse_args():
     parser.add_argument("-a", "--analysis-time", default=5, type=int, help="how many seconds to analyze for")
     parser.add_argument("-n", "--songs-file", required=False, type=str, help="file with songs to create a playlist")
     parser.add_argument("-t", "--tunefind", required=False, help="search for songs on tunefind")
+    parser.add_argument("-p", "--playlist", required=False, help="spotify playlist to add songs to")
 
     if not sys.argv[1:]:
         parser.print_help()
@@ -54,39 +55,14 @@ def main():
         with open(args.output_file, "w") as output_file:
             json.dump([asdict(song) for song in all_songs], output_file, default=encoder, indent=4)
 
-    spotify_helper = SpotifyHelper(
-        os.getenv("SPOTIFY_CLIENT_ID"), os.getenv("SPOTIFY_CLIENT_SECRET"), os.getenv("SPOTIFY_REDIRECT_URI")
-    )
+    if args.playlist:
+        track_ids = [song.track_id for song in all_songs if song.track_id]
 
-    song_tracks_id = []
-    songs_and_distances = []
-    for song in all_songs:
-        spotify_tracks = spotify_helper.get_track(song.title, song.artist)
-        if not spotify_tracks:
-            print(f"Could not find track {song.title} by {song.artist}")
-            print(f"Spotify response: {spotify_tracks}")
-            continue
+        spotify_helper = SpotifyHelper(
+            os.getenv("SPOTIFY_CLIENT_ID"), os.getenv("SPOTIFY_CLIENT_SECRET"), os.getenv("SPOTIFY_REDIRECT_URI")
+        )
 
-        spotify_track = spotify_tracks[0]
-        if get_distance(song.title.lower(), spotify_track.get("name").lower()) > 0:
-            songs_and_distances.append(
-                {
-                    "song": song.title,
-                    "artist": song.artist,
-                    "spotify_track": spotify_track.get("name"),
-                    "spotify_link": spotify_track.get("external_urls").get("spotify"),
-                    "distance": get_distance(song.title, spotify_track.get("name")),
-                }
-            )
-        if get_distance(song.title.lower(), spotify_track.get("name").lower()) > 5:
-            print(f"Could not find track {song.title} by {song.artist}")
-            continue
-
-        song_tracks_id.append(spotify_track.get("id"))
-        print(f"Found track {spotify_track.get('name')}")
-
-    with open("out/songs_and_distances.json", "w") as output_file:
-        json.dump(songs_and_distances, output_file, indent=4)
+        spotify_helper.playlist_add_tracks(args.playlist, track_ids)
 
     # Print final message
     print("Processing complete!")

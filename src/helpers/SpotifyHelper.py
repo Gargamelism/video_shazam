@@ -5,10 +5,12 @@ from urllib import parse
 from progressbar import ProgressBar
 
 from helpers.string_helper import get_distance
+from helpers.list_helper import chunks
 
 
 class SpotifyHelper:
     _scope = "playlist-modify-public"
+    PLAYLISTS_LIMIT_CHANGE_LIMIT = 100
 
     def __init__(self, client_id, client_secret, redirect_uri):
         self.spotipy = spotipy.Spotify(
@@ -72,26 +74,37 @@ class SpotifyHelper:
 
         return items
 
-    def get_playlist(self, playlist_name: str):
-        user_playlists = self.spotipy.current_user_playlists(offset=0, limit=50)
+    def _get_playlist(self, playlist_name: str):
+        limit = 50
+        user_playlists = self.spotipy.current_user_playlists(offset=0, limit=limit)
         total_playlists = user_playlists.get("total")
-        limit = user_playlists.get("limit")
-        offset = user_playlists.get("offset")
         all_playlists = user_playlists.get("items")
 
-        while total_playlists > offset + limit:
-            offset += limit
-            user_playlists = self.spotipy.current_user_playlists(offset=offset, limit=limit)
+        while len(all_playlists) < total_playlists:
+            user_playlists = self.spotipy.current_user_playlists(offset=len(all_playlists), limit=limit)
+            total_playlists = user_playlists.get("total")
             all_playlists += user_playlists.get("items")
 
         for playlist in all_playlists:
             if playlist_name.lower() in playlist.get("name").lower():
                 return playlist
 
-    def playlist_add_tracks(self, playlist_id: str, tracks: list[str]):
-        self.spotipy.playlist_add_items(playlist_id, tracks)
+    def playlist_add_tracks(self, playlist_name: str, tracks: list[str]):
+        playlist = self._get_playlist(playlist_name)
+        if not playlist:
+            print(f"Created playlist {playlist_name}")
+            playlist = self.spotipy.user_playlist_create(self.spotipy.me().get("id"), playlist_name, public=True)
+
+        print("Removing duplicate tracks")
+        self._playlist_remove_all_occurrences_of_items(playlist.get("id"), tracks)
+
+        print("Adding tracks to playlist")
+        for tracks_chunk in chunks(tracks, self.PLAYLISTS_LIMIT_CHANGE_LIMIT):
+            self.spotipy.playlist_add_items(playlist.get("id"), tracks_chunk)
         return True
 
-    def playlist_remove_all_occurrences_of_items(self, playlist_id: str, tracks: list[str]):
-        self.spotipy.playlist_remove_all_occurrences_of_items(playlist_id, tracks)
+    def _playlist_remove_all_occurrences_of_items(self, playlist_id: str, tracks: list[str]):
+        for tracks_chunk in chunks(tracks, self.PLAYLISTS_LIMIT_CHANGE_LIMIT):
+            self.spotipy.playlist_remove_all_occurrences_of_items(playlist_id, tracks_chunk)
+
         return True

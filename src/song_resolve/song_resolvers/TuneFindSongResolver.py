@@ -1,3 +1,4 @@
+from urllib import request
 from playwright.sync_api import sync_playwright, Page, Locator, Browser
 from progressbar import ProgressBar
 
@@ -91,9 +92,17 @@ class TuneFindSongResolver:
             inner_text_2 = song_block[2].inner_text()
             timestamp = self._get_timestamp(inner_text_2)
             description = self._get_description(inner_text_2)
+
+            spotify_track_id = self._get_spotify_track_id(song_block[3])
+
             episode_songs.append(
                 SongData(
-                    original_file=episode_title, title=song_name, artist=song_artists, time=timestamp, description=description
+                    original_file=episode_title,
+                    title=song_name,
+                    artist=song_artists,
+                    time=timestamp,
+                    description=description,
+                    track_id=spotify_track_id,
                 )
             )
 
@@ -114,3 +123,18 @@ class TuneFindSongResolver:
 
     def _get_description(self, song_text: str):
         return song_text[song_text.find(")") + 2 :].strip()
+
+    def _get_spotify_track_id(self, links_block: Locator) -> str:
+        spotify_link = ""
+        audio_links = links_block.locator("a").all()
+        for link in audio_links:
+            link_icon_alt_text = link.locator("img").first.get_attribute("alt")
+            if "spotify" in link_icon_alt_text:
+                spotify_link = link.get_attribute("href")
+                break
+
+        if not spotify_link:
+            return ""
+
+        with request.urlopen(spotify_link) as contents:
+            return contents.url.split("/")[-1]
